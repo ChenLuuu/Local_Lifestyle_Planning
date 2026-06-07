@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-orange-50/40 text-gray-900 antialiased;
+  }
+}
+
+@layer utilities {
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-5;
+  }
+  .btn-primary {
+    @apply bg-brand-orange text-white font-semibold px-6 py-3 rounded-xl
+           hover:bg-brand-deep active:scale-95 transition-all duration-150 shadow-md shadow-orange-200
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none;
+  }
+  .btn-secondary {
+    @apply bg-white text-gray-700 font-medium px-6 py-3 rounded-xl border border-gray-200
+           hover:bg-gray-50 active:scale-95 transition-all duration-150;
+  }
+  .tag {
+    @apply px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all duration-150 border;
+  }
+  .tag-unselected {
+    @apply tag bg-white text-gray-500 border-gray-200 hover:border-brand-orange hover:text-brand-orange hover:bg-orange-50;
+  }
+  .tag-selected {
+    @apply tag bg-brand-orange text-white border-brand-orange shadow-sm shadow-orange-200;
+  }
+  .select-field {
+    @apply w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700
+           focus:outline-none focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-orange-100
+           transition-all cursor-pointer;
+  }
+}

@@ -1,0 +1,184 @@
+# =============================================================================
+# pyproject.toml
+# 环境子系统（灶台）· Python 项目依赖与环境配置
+#
+# 核心原则：让环境状态自描述。
+# 用 pyproject.toml 锁定依赖，用 .python-version 指定运行时版本。
+# 确保任意 Agent 会话都能从零复现相同的环境。
+# =============================================================================
+
+[build-system]
+requires      = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]
+
+# ----------------------------------------------------------------------------
+# 项目元数据
+# <placeholder> 替换为实际项目信息
+# ----------------------------------------------------------------------------
+[project]
+name        = "meituan-local-agent"
+version     = "0.1.0"
+description = "接受自然语言目标，自动完成美团本地生活场景（4-6小时）的规划与执行"
+readme      = "README.md"
+authors     = [
+    { name = "Meituan-Local-Agent Team", email = "chenluu_juno@outlook.com" }
+]
+keywords    = ["agent", "planning", "meituan", "local-life", "react-loop"]
+
+# 运行时版本要求（与 .python-version 保持一致）
+requires-python = ">=3.11"
+
+# ----------------------------------------------------------------------------
+# 生产依赖
+# <placeholder> 根据实际技术栈调整
+# ----------------------------------------------------------------------------
+dependencies = [
+    # Web 框架 + SSE 流式输出
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "sse-starlette>=1.6.0",       # Server-Sent Events (Thought/Act/Observe 流式推送)
+
+    # 数据库（SQLite，必须使用 SQLAlchemy 2.0 语法 — 硬约束）
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",          # SQLAlchemy 异步 SQLite 驱动
+
+    # 缓存 + 幂等键（Redis TTL 分级，execute_booking 永不缓存）
+    "redis>=5.0.0",
+
+    # LLM 调用（DashScope OpenAI 兼容模式，qwen-plus Function Calling）
+    "openai>=1.30.0",
+
+    # Mock 数据层（Faker + 10% 随机故障注入）
+    "faker>=18.0.0",
+
+    # 环境变量加载（从 .env 文件）
+    "python-dotenv>=1.0.0",
+
+    # 数据验证
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+
+    # 认证（JWT Bearer Token）
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+
+    # HTTP 客户端（测试用）
+    "httpx>=0.25.0",
+]
+
+# ----------------------------------------------------------------------------
+# 开发依赖（[dev] 扩展组）
+# ----------------------------------------------------------------------------
+[project.optional-dependencies]
+dev = [
+    # 测试框架
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.3.0",       # 并行测试
+    "httpx>=0.25.0",              # 测试 HTTP 客户端（FastAPI TestClient）
+
+    # 类型检查（硬约束：必须通过 mypy --strict）
+    "mypy>=1.5.0",
+    "types-passlib",
+    "types-redis",
+
+    # Lint（硬约束：必须通过 ruff check）
+    "ruff>=0.1.0",
+
+    # 开发工具
+    "pre-commit>=3.4.0",
+    "ipython>=8.0.0",
+]
+
+# ----------------------------------------------------------------------------
+# 工具配置
+# ----------------------------------------------------------------------------
+
+# pytest 配置
+[tool.pytest.ini_options]
+testpaths       = ["tests"]
+asyncio_mode    = "auto"
+addopts         = "-x --tb=short -q"
+# 标记分类（对应三层验证）
+markers = [
+    "unit: 单元测试（第二层验证）",
+    "integration: 集成测试（第二层验证）",
+    "e2e: 端到端测试（第三层验证）",
+]
+
+# mypy 配置（严格模式，硬约束）
+[tool.mypy]
+python_version          = "3.11"
+strict                  = true
+warn_return_any         = true
+warn_unused_configs     = true
+disallow_untyped_defs   = true
+disallow_incomplete_defs = true
+check_untyped_defs      = true
+disallow_untyped_decorators = true
+no_implicit_optional    = true
+warn_redundant_casts    = true
+warn_unused_ignores     = true
+no_implicit_reexport    = true
+
+# 忽略第三方库的类型问题（无官方 type stubs）
+[[tool.mypy.overrides]]
+module = [
+    "faker.*",
+    "jose.*",
+    "passlib.*",
+    "sse_starlette.*",
+]
+ignore_missing_imports  = true
+
+# ruff 配置（Lint，硬约束）
+[tool.ruff]
+target-version  = "py311"
+line-length     = 88
+src             = ["agent"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "N",    # pep8-naming
+    "ANN",  # flake8-annotations（类型注解）
+    "S",    # flake8-bandit（安全检查）
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "RUF001",  # Chinese fullwidth punctuation is intentional in UI prompt strings
+    "RUF002",  # same for docstrings
+    "RUF003",  # same for comments
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "ANN"]  # 测试文件放宽 assert 和类型注解要求
+"agent/tools/mock_data/*.py" = ["E501"]  # static data rows are inherently long
+"agent/core/llm_planner.py" = ["E501"]  # LLM system prompt strings are intentionally long
+"agent/tools/restaurant_search.py" = ["E501"]  # haversine formula is a single mathematical expression
+"agent/tools/venue_search.py" = ["E501"]  # haversine formula is a single mathematical expression
+"agent/main.py" = ["E402"]  # load_dotenv() must precede app imports to populate env vars
+
+[tool.ruff.format]
+quote-style             = "double"
+indent-style            = "space"
+skip-magic-trailing-comma = false
+
+# coverage 配置
+[tool.coverage.run]
+source  = ["agent"]
+omit    = ["tests/*", "agent/tests/*"]
+
+[tool.coverage.report]
+fail_under  = 70    # 黑客松阶段，覆盖率目标 70%（Pass@1 框架覆盖核心路径）
+show_missing = true
